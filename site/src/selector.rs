@@ -32,7 +32,7 @@ use std::fmt;
 use std::ops::RangeInclusive;
 use std::str::FromStr;
 use std::sync::Arc;
-
+// foo
 /// Finds the most appropriate `ArtifactId` for a given bound.
 ///
 /// Searches the commits in the index either from the left or the right.
