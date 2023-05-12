@@ -41,7 +41,7 @@ def mkdir_and_open(crate, name):
         os.mkdir(dirname)
     except Exception:
         pass
-    return open(os.path.join(dirname, '%s.rs' % name.replace('-', '_')), 'wb')
+    return open(os.path.join(dirname, f"{name.replace('-', '_')}.rs"), 'wb')
 
 def dedent(s):
     return re.sub(r'(?m)^\s*\|?', '', s)
@@ -58,7 +58,7 @@ def write_fmt(f, args, fmt_or_cond, thenfmt=None, elsefmt=None, **kwargs):
     else:
         fmt = fmt_or_cond
     if fmt:
-        kwargs.update(args)
+        kwargs |= args
         f.write(dedent(fmt).format(**kwargs))
 
 def write_comma_separated(f, prefix, l, width=80):
@@ -199,8 +199,11 @@ def make_minimal_search(data, invdata, premap, maxsearch):
         lower = []
         upper = []
         for i in xrange(0, maxvalue, 1<<searchbits):
-            v = sorted(premap(invdata[j]) for j in xrange(i, i+(1<<searchbits)) if j in invdata)
-            if v:
+            if v := sorted(
+                premap(invdata[j])
+                for j in xrange(i, i + (1 << searchbits))
+                if j in invdata
+            ):
                 w = sorted((y - x, j) for j, (x, y) in enumerate(zip(v, v[1:])))
                 count = v[-1] - v[0]
                 block = [v[0], v[-1]]
@@ -208,8 +211,7 @@ def make_minimal_search(data, invdata, premap, maxsearch):
                     if count <= maxsearch: break
                     assert v[j+1] - v[j] == k
                     count -= k
-                    block.append(v[j])
-                    block.append(v[j+1])
+                    block.extend((v[j], v[j+1]))
                 block.sort()
                 assert minkey <= block[0] and block[-1] < 0x7fff
                 # (s, e) when s < 0x8000 is a range [s, e)
@@ -269,8 +271,11 @@ def generate_single_byte_index(opts, crate, name):
            |
            |const FORWARD_TABLE: &'static [u16] = &[
         ''')
-        write_comma_separated(f, '    ',
-            ['%s, ' % ('X' if value is None else value) for value in data])
+        write_comma_separated(
+            f,
+            '    ',
+            [f"{'X' if value is None else value}, " for value in data],
+        )
         write_fmt(f, args, '''\
            |]; // {datasz} entries
            |
@@ -570,9 +575,14 @@ def generate_multi_byte_index(opts, crate, name):
            |{premapcode}
            |const FORWARD_TABLE: &'static [u16] = &[
         ''')
-        write_comma_separated(f, '    ',
-            ['%s, ' % (data[key] & 0xffff if key in data else 'X')
-             for key in xrange(minkey, maxkey)])
+        write_comma_separated(
+            f,
+            '    ',
+            [
+                f"{data[key] & 65535 if key in data else 'X'}, "
+                for key in xrange(minkey, maxkey)
+            ],
+        )
         write_fmt(f, args, '''\
            |]; // {datasz} entries
         ''')
@@ -604,6 +614,7 @@ def generate_multi_byte_index(opts, crate, name):
         write_fmt(f, args, minkey != 0, '''\
            |    let code = (code as usize).wrapping_sub({dataoff});
         ''', '''\
+        ''', '''\
            |    let code = code as usize;
         ''')
         write_fmt(f, args, '''\
@@ -611,6 +622,7 @@ def generate_multi_byte_index(opts, crate, name):
         ''')
         write_fmt(f, args, morebits, '''\
            |        (FORWARD_TABLE[code] as u32) | (((FORWARD_TABLE_MORE[code >> 5] >> (code & 31)) & 1) << 17)
+        ''', '''\
         ''', '''\
            |        FORWARD_TABLE[code] as u32
         ''')
@@ -623,8 +635,9 @@ def generate_multi_byte_index(opts, crate, name):
            |#[cfg(not(feature = "no-optimized-legacy-encoding"))]
            |const BACKWARD_TABLE_LOWER: &'static [u16] = &[
         ''')
-        write_comma_separated(f, '    ',
-            ['%s, ' % ('X' if v is None else v) for v in trielower])
+        write_comma_separated(
+            f, '    ', [f"{'X' if v is None else v}, " for v in trielower]
+        )
         write_fmt(f, args, '''\
            |]; // {trielowersz} entries
            |
@@ -694,7 +707,7 @@ def generate_multi_byte_index(opts, crate, name):
             ''')
             retifcorrect = 'if let Some(i_) = verify_and_map(codehi, %s) {{ return i_; }}'
         else:
-            retifcorrect = 'return %s;' % (retexpr % '%s')
+            retifcorrect = f"return {retexpr % '%s'};"
         write_fmt(f, args, not fulllinearsearch, '''\
            |    let offset = (code >> {searchbits}) as usize;
            |    let (start, end) = if offset < {searchupperszm1} {{
@@ -715,6 +728,7 @@ def generate_multi_byte_index(opts, crate, name):
            |            }}
            |        }}
            |    }}
+        ''', '''\
         ''', '''\
            |    if code <= {maxvalue} {{
            |        for (i, &v) in FORWARD_TABLE.iter().enumerate() {{
@@ -774,10 +788,8 @@ def generate_multi_byte_index(opts, crate, name):
     return forwardsz, backwardsz + backwardmore, backwardszslow + backwardmore
 
 def generate_multi_byte_range_lbound_index(opts, crate, name):
-    data = []
     comments = []
-    for key, value in whatwg_index(opts, name, comments):
-        data.append((key, value))
+    data = list(whatwg_index(opts, name, comments))
     assert data and data == sorted(data)
 
     minkey, minvalue = data[0]

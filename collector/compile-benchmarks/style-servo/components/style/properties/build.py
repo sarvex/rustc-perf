@@ -21,7 +21,7 @@ RE_PYTHON_ADDR = re.compile(r'<.+? object at 0x[0-9a-fA-F]+>')
 
 
 def main():
-    usage = "Usage: %s [ servo | gecko ] [ style-crate | html ]" % sys.argv[0]
+    usage = f"Usage: {sys.argv[0]} [ servo | gecko ] [ style-crate | html ]"
     if len(sys.argv) < 3:
         abort(usage)
     product = sys.argv[1]
@@ -33,14 +33,14 @@ def main():
     properties = data.PropertiesData(product=product)
     template = os.path.join(BASE, "properties.mako.rs")
     rust = render(template, product=product, data=properties, __file__=template)
-    if output == "style-crate":
+    if output == "html":
+        write_html(properties)
+    elif output == "style-crate":
         write(os.environ["OUT_DIR"], "properties.rs", rust)
         if product == "gecko":
             template = os.path.join(BASE, "gecko.mako.rs")
             rust = render(template, data=properties)
             write(os.environ["OUT_DIR"], "gecko_properties.rs", rust)
-    elif output == "html":
-        write_html(properties)
 
 
 def abort(message):
@@ -73,19 +73,18 @@ def write(directory, filename, content):
     full_path = os.path.join(directory, filename)
     open(full_path, "wb").write(content)
 
-    python_addr = RE_PYTHON_ADDR.search(content)
-    if python_addr:
-        abort("Found \"{}\" in {} ({})".format(python_addr.group(0), filename, full_path))
+    if python_addr := RE_PYTHON_ADDR.search(content):
+        abort(f'Found \"{python_addr.group(0)}\" in {filename} ({full_path})')
 
 
 def write_html(properties):
-    properties = dict(
-        (p.name, {
+    properties = {
+        p.name: {
             "flag": p.experimental,
-            "shorthand": hasattr(p, "sub_properties")
-        })
+            "shorthand": hasattr(p, "sub_properties"),
+        }
         for p in properties.longhands + properties.shorthands
-    )
+    }
     doc_servo = os.path.join(BASE, "..", "..", "..", "target", "doc", "servo")
     html = render(os.path.join(BASE, "properties.html.mako"), properties=properties)
     write(doc_servo, "css-properties.html", html)

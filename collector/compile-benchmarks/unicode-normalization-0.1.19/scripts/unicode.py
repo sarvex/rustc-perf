@@ -22,7 +22,7 @@ import collections
 import urllib.request
 
 UNICODE_VERSION = "13.0.0"
-UCD_URL = "https://www.unicode.org/Public/%s/ucd/" % UNICODE_VERSION
+UCD_URL = f"https://www.unicode.org/Public/{UNICODE_VERSION}/ucd/"
 
 PREAMBLE = """// Copyright 2012-2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
@@ -158,16 +158,24 @@ class UnicodeData(object):
 
             char_int = self.name_to_char_int[description]
 
-            assert not char_int in self.combining_classes, "Unexpected: CJK compat variant with a combining class"
-            assert not char_int in self.compat_decomp, "Unexpected: CJK compat variant and compatibility decomposition"
+            assert (
+                char_int not in self.combining_classes
+            ), "Unexpected: CJK compat variant with a combining class"
+            assert (
+                char_int not in self.compat_decomp
+            ), "Unexpected: CJK compat variant and compatibility decomposition"
             assert len(self.canon_decomp[char_int]) == 1, "Unexpected: CJK compat variant and non-singleton canonical decomposition"
             # If we ever need to handle Hangul here, we'll need to handle it separately.
             assert not (S_BASE <= char_int < S_BASE + S_COUNT)
 
             cjk_compat_variant_parts = [int(c, 16) for c in variation_sequence.split()]
             for c in cjk_compat_variant_parts:
-                assert not c in self.canon_decomp, "Unexpected: CJK compat variant is unnormalized (canon)"
-                assert not c in self.compat_decomp, "Unexpected: CJK compat variant is unnormalized (compat)"
+                assert (
+                    c not in self.canon_decomp
+                ), "Unexpected: CJK compat variant is unnormalized (canon)"
+                assert (
+                    c not in self.compat_decomp
+                ), "Unexpected: CJK compat variant is unnormalized (compat)"
             self.cjk_compat_variants_fully_decomp[char_int] = cjk_compat_variant_parts
 
     def _load_norm_props(self):
@@ -254,14 +262,12 @@ class UnicodeData(object):
             decomp = self.canon_decomp.get(char_int)
             if decomp is not None:
                 for decomposed_ch in decomp:
-                    for fully_decomposed_ch in _decompose(decomposed_ch, compatible):
-                        yield fully_decomposed_ch
+                    yield from _decompose(decomposed_ch, compatible)
                 return
 
             if compatible and char_int in self.compat_decomp:
                 for decomposed_ch in self.compat_decomp[char_int]:
-                    for fully_decomposed_ch in _decompose(decomposed_ch, compatible):
-                        yield fully_decomposed_ch
+                    yield from _decompose(decomposed_ch, compatible)
                 return
 
             yield char_int
@@ -282,11 +288,11 @@ class UnicodeData(object):
                 continue
 
             canon = list(_decompose(char_int, False))
-            if not (len(canon) == 1 and canon[0] == char_int):
+            if len(canon) != 1 or canon[0] != char_int:
                 canon_fully_decomp[char_int] = canon
 
             compat = list(_decompose(char_int, True))
-            if not (len(compat) == 1 and compat[0] == char_int):
+            if len(compat) != 1 or compat[0] != char_int:
                 compat_fully_decomp[char_int] = compat
 
         # Since canon_fully_decomp is a subset of compat_fully_decomp, we don't
@@ -360,9 +366,9 @@ def gen_mph_data(name, d, kv_type, kv_callback):
     for s in salt:
         out.write("    0x{:x},\n".format(s))
     out.write("];\n")
-    out.write("pub(crate) const {}_KV: &[{}] = &[\n".format(name.upper(), kv_type))
+    out.write(f"pub(crate) const {name.upper()}_KV: &[{kv_type}] = &[\n")
     for k in keys:
-        out.write("    {},\n".format(kv_callback(k)))
+        out.write(f"    {kv_callback(k)},\n")
     out.write("];\n\n")
 
 def gen_combining_class(combining_classes, out):
@@ -370,10 +376,11 @@ def gen_combining_class(combining_classes, out):
         lambda k: "0x{:X}".format(int(combining_classes[k]) | (k << 8)))
 
 def gen_composition_table(canon_comp, out):
-    table = {}
-    for (c1, c2), c3 in canon_comp.items():
-        if c1 < 0x10000 and c2 < 0x10000:
-            table[(c1 << 16) | c2] = c3
+    table = {
+        (c1 << 16) | c2: c3
+        for (c1, c2), c3 in canon_comp.items()
+        if c1 < 0x10000 and c2 < 0x10000
+    }
     (salt, keys) = minimal_perfect_hash(table)
     gen_mph_data('COMPOSITION_TABLE', table, '(u32, char)',
         lambda k: "(0x%s, '\\u{%s}')" % (hexify(k), hexify(table[k])))
@@ -391,9 +398,14 @@ def gen_composition_table(canon_comp, out):
 def gen_decomposition_tables(canon_decomp, compat_decomp, cjk_compat_variants_decomp, out):
     tables = [(canon_decomp, 'canonical'), (compat_decomp, 'compatibility'), (cjk_compat_variants_decomp, 'cjk_compat_variants')]
     for table, name in tables:
-        gen_mph_data(name + '_decomposed', table, "(u32, &'static [char])",
-            lambda k: "(0x{:x}, &[{}])".format(k,
-                ", ".join("'\\u{%s}'" % hexify(c) for c in table[k])))
+        gen_mph_data(
+            f'{name}_decomposed',
+            table,
+            "(u32, &'static [char])",
+            lambda k: "(0x{:x}, &[{}])".format(
+                k, ", ".join("'\\u{%s}'" % hexify(c) for c in table[k])
+            ),
+        )
 
 def gen_qc_match(prop_table, out):
     out.write("    match c {\n")
@@ -520,7 +532,7 @@ def my_hash(x, salt, n):
 # Compute minimal perfect hash function, d can be either a dict or list of keys.
 def minimal_perfect_hash(d):
     n = len(d)
-    buckets = dict((h, []) for h in range(n))
+    buckets = {h: [] for h in range(n)}
     for key in d:
         h = my_hash(key, 0, n)
         buckets[h].append(key)
@@ -530,39 +542,34 @@ def minimal_perfect_hash(d):
     salts = [0] * n
     keys = [0] * n
     for (bucket_size, h) in bsorted:
-        # Note: the traditional perfect hashing approach would also special-case
-        # bucket_size == 1 here and assign any empty slot, rather than iterating
-        # until rehash finds an empty slot. But we're not doing that so we can
-        # avoid the branch.
         if bucket_size == 0:
             break
-        else:
-            for salt in range(1, 32768):
-                rehashes = [my_hash(key, salt, n) for key in buckets[h]]
-                # Make sure there are no rehash collisions within this bucket.
-                if all(not claimed[hash] for hash in rehashes):
-                    if len(set(rehashes)) < bucket_size:
-                        continue
-                    salts[h] = salt
-                    for key in buckets[h]:
-                        rehash = my_hash(key, salt, n)
-                        claimed[rehash] = True
-                        keys[rehash] = key
-                    break
-            if salts[h] == 0:
-                print("minimal perfect hashing failed")
-                # Note: if this happens (because of unfortunate data), then there are
-                # a few things that could be done. First, the hash function could be
-                # tweaked. Second, the bucket order could be scrambled (especially the
-                # singletons). Right now, the buckets are sorted, which has the advantage
-                # of being deterministic.
-                #
-                # As a more extreme approach, the singleton bucket optimization could be
-                # applied (give the direct address for singleton buckets, rather than
-                # relying on a rehash). That is definitely the more standard approach in
-                # the minimal perfect hashing literature, but in testing the branch was a
-                # significant slowdown.
-                exit(1)
+        for salt in range(1, 32768):
+            rehashes = [my_hash(key, salt, n) for key in buckets[h]]
+            # Make sure there are no rehash collisions within this bucket.
+            if all(not claimed[hash] for hash in rehashes):
+                if len(set(rehashes)) < bucket_size:
+                    continue
+                salts[h] = salt
+                for key in buckets[h]:
+                    rehash = my_hash(key, salt, n)
+                    claimed[rehash] = True
+                    keys[rehash] = key
+                break
+        if salts[h] == 0:
+            print("minimal perfect hashing failed")
+            # Note: if this happens (because of unfortunate data), then there are
+            # a few things that could be done. First, the hash function could be
+            # tweaked. Second, the bucket order could be scrambled (especially the
+            # singletons). Right now, the buckets are sorted, which has the advantage
+            # of being deterministic.
+            #
+            # As a more extreme approach, the singleton bucket optimization could be
+            # applied (give the direct address for singleton buckets, rather than
+            # relying on a rehash). That is definitely the more standard approach in
+            # the minimal perfect hashing literature, but in testing the branch was a
+            # significant slowdown.
+            exit(1)
     return (salts, keys)
 
 if __name__ == '__main__':

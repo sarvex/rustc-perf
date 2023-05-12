@@ -144,9 +144,8 @@ def format_result(r):
     repr_str = repr(r)
     if '\n' in repr_str: repr_str = repr(repr_str)
     if len(repr_str) > resultlimit:
-        repr_str = repr_str[:resultlimit]+" ..."
-    result = "<%s @ 0x%x> (%s)" % (type(r).__name__,id(r),repr_str)
-    return result
+        repr_str = f"{repr_str[:resultlimit]} ..."
+    return "<%s @ 0x%x> (%s)" % (type(r).__name__,id(r),repr_str)
 
 
 # Format stack entries when the parser is running in debug mode
@@ -195,8 +194,7 @@ class YaccProduction:
         self.lexer = None
         self.parser= None
     def __getitem__(self,n):
-        if n >= 0: return self.slice[n].value
-        else: return self.stack[n].value
+        return self.slice[n].value if n >= 0 else self.stack[n].value
 
     def __setitem__(self,n,v):
         self.slice[n].value = v

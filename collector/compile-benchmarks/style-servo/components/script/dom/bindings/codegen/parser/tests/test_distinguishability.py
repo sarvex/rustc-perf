@@ -86,14 +86,16 @@ def WebIDLTest(parser, harness):
                                (type1 in unrelatedTypes or
                                 type2 in unrelatedTypes))
 
-            harness.check(type1.isDistinguishableFrom(type2),
-                          distinguishable,
-                          "Type %s should %sbe distinguishable from type %s" %
-                          (type1, "" if distinguishable else "not ", type2))
-            harness.check(type2.isDistinguishableFrom(type1),
-                          distinguishable,
-                          "Type %s should %sbe distinguishable from type %s" %
-                          (type2, "" if distinguishable else "not ", type1))
+            harness.check(
+                type1.isDistinguishableFrom(type2),
+                distinguishable,
+                f'Type {type1} should {"" if distinguishable else "not "}be distinguishable from type {type2}',
+            )
+            harness.check(
+                type2.isDistinguishableFrom(type1),
+                distinguishable,
+                f'Type {type2} should {"" if distinguishable else "not "}be distinguishable from type {type1}',
+            )
 
     parser = parser.reset()
     parser.parse("""
@@ -172,8 +174,13 @@ def WebIDLTest(parser, harness):
 
     # Try to categorize things a bit to keep list lengths down
     def allBut(list1, list2):
-        return [a for a in list1 if a not in list2 and
-                (a != "any" and a != "Promise<any>" and a != "Promise<any>?")]
+        return [
+            a
+            for a in list1
+            if a not in list2
+            and a not in ["any", "Promise<any>", "Promise<any>?"]
+        ]
+
     unions = [ "(long or Callback)", "optional (long or Dict)" ]
     numerics = [ "long", "short", "long?", "short?" ]
     booleans = [ "boolean", "boolean?" ]
@@ -203,9 +210,9 @@ def WebIDLTest(parser, harness):
 
     # Build a representation of the distinguishability table as a dict
     # of dicts, holding True values where needed, holes elsewhere.
-    data = dict();
+    data = {};
     for type in argTypes:
-        data[type] = dict()
+        data[type] = {}
     def setDistinguishable(type, types):
         for other in types:
             data[type][other] = True
@@ -291,11 +298,15 @@ def WebIDLTest(parser, harness):
             threw = True
 
         if areDistinguishable(type1, type2):
-            harness.ok(not threw,
-                       "Should not throw for '%s' and '%s' because they are distinguishable" % (type1, type2))
+            harness.ok(
+                not threw,
+                f"Should not throw for '{type1}' and '{type2}' because they are distinguishable",
+            )
         else:
-            harness.ok(threw,
-                       "Should throw for '%s' and '%s' because they are not distinguishable" % (type1, type2))
+            harness.ok(
+                threw,
+                f"Should throw for '{type1}' and '{type2}' because they are not distinguishable",
+            )
 
     # Enumerate over everything in both orders, since order matters in
     # terms of our implementation of distinguishability checks

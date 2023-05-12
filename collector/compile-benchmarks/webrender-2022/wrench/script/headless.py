@@ -50,19 +50,17 @@ def cd(new_path):
 def find_dep_path_newest(package, bin_path):
     deps_path = path.join(path.split(bin_path)[0], "build")
     with cd(deps_path):
-        candidates = glob(package + '-*')
+        candidates = glob(f'{package}-*')
     candidates = (path.join(deps_path, c) for c in candidates)
     """ For some reason cargo can create an extra osmesa-src without libs """
     candidates = (c for c in candidates if path.exists(path.join(c, 'out')))
     candidate_times = sorted(((path.getmtime(c), c) for c in candidates), reverse=True)
-    if len(candidate_times) > 0:
-        return candidate_times[0][1]
-    return None
+    return candidate_times[0][1] if len(candidate_times) > 0 else None
 
 
 def is_windows():
     """ Detect windows, mingw, cygwin """
-    return sys.platform == 'win32' or sys.platform == 'msys' or sys.platform == 'cygwin'
+    return sys.platform in ['win32', 'msys', 'cygwin']
 
 
 def is_macos():
@@ -74,9 +72,7 @@ def is_linux():
 
 
 def debugger():
-    if "DEBUGGER" in os.environ:
-        return os.environ["DEBUGGER"]
-    return None
+    return os.environ.get("DEBUGGER", None)
 
 
 def use_gdb():
@@ -105,7 +101,7 @@ def set_osmesa_env(bin_path):
     elif is_macos():
         osmesa_path = path.join(base, "out", "mesa", "src", "gallium", "targets", "osmesa")
         glapi_path = path.join(base, "out", "mesa", "src", "mapi", "shared-glapi")
-        os.environ["DYLD_LIBRARY_PATH"] = osmesa_path + ":" + glapi_path
+        os.environ["DYLD_LIBRARY_PATH"] = f"{osmesa_path}:{glapi_path}"
 
 
 extra_flags = os.getenv('CARGOFLAGS', None)
@@ -118,11 +114,7 @@ if wrench_headless_target:
 else:
     target_folder = '../target/'
 
-if optimized_build():
-    target_folder += 'release/'
-else:
-    target_folder += 'debug/'
-
+target_folder += 'release/' if optimized_build() else 'debug/'
 # For CI purposes, don't build if WRENCH_HEADLESS_TARGET is set.
 # This environment variable is used to point to the location of a cross-compiled
 # wrench for the CI on some platforms.
@@ -138,7 +130,7 @@ if use_rr():
 elif use_gdb():
     dbg_cmd = [debugger(), '--args']
 elif debugger():
-    print("Unknown debugger: " + debugger())
+    print(f"Unknown debugger: {debugger()}")
     sys.exit(1)
 
 set_osmesa_env(target_folder)
@@ -147,6 +139,10 @@ set_osmesa_env(target_folder)
 #           cause 1.0 / 255.0 pixel differences in a subsequent test. For now, we
 #           run tests with no-scissor mode, which ensures a complete target clear
 #           between test runs. But we should investigate this further...
-cmd = dbg_cmd + [target_folder + 'wrench', '--no-scissor', '--headless'] + sys.argv[1:]
+cmd = (
+    dbg_cmd
+    + [f'{target_folder}wrench', '--no-scissor', '--headless']
+    + sys.argv[1:]
+)
 print('Running: `' + ' '.join(cmd) + '`')
 subprocess.check_call(cmd, stderr=subprocess.STDOUT)

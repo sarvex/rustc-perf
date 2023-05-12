@@ -100,7 +100,7 @@ class Keyword(object):
         elif product == "servo":
             return self.servo_values()
         else:
-            raise Exception("Bad product: " + product)
+            raise Exception(f"Bad product: {product}")
 
     def aliases_for(self, product):
         if product == "gecko":
@@ -108,7 +108,7 @@ class Keyword(object):
         elif product == "servo":
             return self.aliases
         else:
-            raise Exception("Bad product: " + product)
+            raise Exception(f"Bad product: {product}")
 
     def gecko_constant(self, value):
         moz_stripped = value.replace("-moz-", '') if self.gecko_strip_moz_prefix else value.replace("-moz-", 'moz-')
@@ -116,25 +116,27 @@ class Keyword(object):
         if self.gecko_enum_prefix:
             parts = moz_stripped.replace('-', '_').split('_')
             parts = mapped if mapped else [p.title() for p in parts]
-            return self.gecko_enum_prefix + "::" + "".join(parts)
+            return f"{self.gecko_enum_prefix}::" + "".join(parts)
         else:
             suffix = mapped if mapped else moz_stripped.replace("-", "_")
-            return self.gecko_constant_prefix + "_" + suffix.upper()
+            return f"{self.gecko_constant_prefix}_{suffix.upper()}"
 
     def needs_cast(self):
         return self.gecko_enum_prefix is None
 
     def maybe_cast(self, type_str):
-        return "as " + type_str if self.needs_cast() else ""
+        return f"as {type_str}" if self.needs_cast() else ""
 
     def casted_constant_name(self, value, cast_type):
         if cast_type is None:
             raise TypeError("We should specify the cast_type.")
 
         if self.gecko_enum_prefix is None:
-            return cast_type.upper() + "_" + self.gecko_constant(value)
+            return f"{cast_type.upper()}_{self.gecko_constant(value)}"
         else:
-            return cast_type.upper() + "_" + self.gecko_constant(value).upper().replace("::", "_")
+            return f"{cast_type.upper()}_" + self.gecko_constant(
+                value
+            ).upper().replace("::", "_")
 
 
 def arg_to_bool(arg):
@@ -154,18 +156,18 @@ class Longhand(object):
                  gecko_pref_ident=None, vector=False, need_animatable=False):
         self.name = name
         if not spec:
-            raise TypeError("Spec should be specified for %s" % name)
+            raise TypeError(f"Spec should be specified for {name}")
         self.spec = spec
         self.keyword = keyword
         self.predefined_type = predefined_type
         self.ident = to_rust_ident(name)
         self.camel_case = to_camel_case(self.ident)
         self.style_struct = style_struct
-        self.experimental = ("layout.%s.enabled" % name) if experimental else None
+        self.experimental = f"layout.{name}.enabled" if experimental else None
         self.custom_cascade = custom_cascade
         self.internal = internal
         self.need_index = need_index
-        self.gecko_ffi_name = gecko_ffi_name or "m" + self.camel_case
+        self.gecko_ffi_name = gecko_ffi_name or f"m{self.camel_case}"
         self.derived_from = (derived_from or "").split()
         self.cast_type = cast_type
         self.logical = arg_to_bool(logical)
@@ -184,19 +186,20 @@ class Longhand(object):
         # > except those defined in this specification,
         # > but does accept the `animation-play-state` property and interprets it specially.
         self.allowed_in_keyframe_block = allowed_in_keyframe_block \
-            and allowed_in_keyframe_block != "False"
+                and allowed_in_keyframe_block != "False"
 
         # This is done like this since just a plain bool argument seemed like
         # really random.
         if animation_value_type is None:
-            raise TypeError("animation_value_type should be specified for (" + name + ")")
+            raise TypeError(f"animation_value_type should be specified for ({name})")
         self.animation_value_type = animation_value_type
 
         self.animatable = animation_value_type != "none"
-        self.transitionable = animation_value_type != "none" \
-            and animation_value_type != "discrete"
-        self.is_animatable_with_computed_value = animation_value_type == "ComputedValue" \
-            or animation_value_type == "discrete"
+        self.transitionable = animation_value_type not in ["none", "discrete"]
+        self.is_animatable_with_computed_value = animation_value_type in [
+            "ComputedValue",
+            "discrete",
+        ]
         if self.logical:
             # Logical properties will be animatable (i.e. the animation type is
             # discrete). For now, it is still non-animatable.
@@ -211,12 +214,12 @@ class Shorthand(object):
                  allowed_in_page_rule=False, flags=None, gecko_pref_ident=None):
         self.name = name
         if not spec:
-            raise TypeError("Spec should be specified for %s" % name)
+            raise TypeError(f"Spec should be specified for {name}")
         self.spec = spec
         self.ident = to_rust_ident(name)
         self.camel_case = to_camel_case(self.ident)
         self.derived_from = None
-        self.experimental = ("layout.%s.enabled" % name) if experimental else None
+        self.experimental = f"layout.{name}.enabled" if experimental else None
         self.sub_properties = sub_properties
         self.internal = internal
         self.alias = alias.split() if alias else []
@@ -230,23 +233,13 @@ class Shorthand(object):
         # > except those defined in this specification,
         # > but does accept the `animation-play-state` property and interprets it specially.
         self.allowed_in_keyframe_block = allowed_in_keyframe_block \
-            and allowed_in_keyframe_block != "False"
+                and allowed_in_keyframe_block != "False"
 
     def get_animatable(self):
-        animatable = False
-        for sub in self.sub_properties:
-            if sub.animatable:
-                animatable = True
-                break
-        return animatable
+        return any(sub.animatable for sub in self.sub_properties)
 
     def get_transitionable(self):
-        transitionable = False
-        for sub in self.sub_properties:
-            if sub.transitionable:
-                transitionable = True
-                break
-        return transitionable
+        return any(sub.transitionable for sub in self.sub_properties)
 
     animatable = property(get_animatable)
     transitionable = property(get_transitionable)
@@ -272,18 +265,18 @@ class Method(object):
         self.is_mut = is_mut
 
     def arg_list(self):
-        args = ["_: " + x for x in self.arg_types]
+        args = [f"_: {x}" for x in self.arg_types]
         args = ["&mut self" if self.is_mut else "&self"] + args
         return ", ".join(args)
 
     def signature(self):
-        sig = "fn %s(%s)" % (self.name, self.arg_list())
+        sig = f"fn {self.name}({self.arg_list()})"
         if self.return_type:
-            sig = sig + " -> " + self.return_type
+            sig = f"{sig} -> {self.return_type}"
         return sig
 
     def declare(self):
-        return self.signature() + ";"
+        return f"{self.signature()};"
 
     def stub(self):
         return self.signature() + "{ unimplemented!() }"
@@ -291,14 +284,14 @@ class Method(object):
 
 class StyleStruct(object):
     def __init__(self, name, inherited, gecko_name=None, additional_methods=None):
-        self.gecko_struct_name = "Gecko" + name
+        self.gecko_struct_name = f"Gecko{name}"
         self.name = name
         self.name_lower = name.lower()
         self.ident = to_rust_ident(self.name_lower)
         self.longhands = []
         self.inherited = inherited
         self.gecko_name = gecko_name or name
-        self.gecko_ffi_name = "nsStyle" + self.gecko_name
+        self.gecko_ffi_name = f"nsStyle{self.gecko_name}"
         self.additional_methods = additional_methods or []
 
 
@@ -327,7 +320,7 @@ class PropertiesData(object):
         #       See servo/servo#14941.
         if self.product == "gecko":
             for prefix in property.extra_prefixes:
-                property.alias.append('-%s-%s' % (prefix, property.name))
+                property.alias.append(f'-{prefix}-{property.name}')
 
     def declare_longhand(self, name, products="gecko servo", **kwargs):
         products = products.split()

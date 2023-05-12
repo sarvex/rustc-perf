@@ -29,7 +29,7 @@ def read_tests(f):
            or 'E' not in fields[0] or fields[0][0] == '#':
             continue
 
-        opts, pat, text, sgroups = fields[0:4]
+        opts, pat, text, sgroups = fields[:4]
         groups = []  # groups as integer ranges
         if sgroups == 'NOMATCH':
             groups = [None]
@@ -53,7 +53,7 @@ def read_tests(f):
             pat = pat.decode('string_escape')
             text = text.decode('string_escape')
         if 'i' in opts:
-            pat = '(?i)%s' % pat
+            pat = f'(?i){pat}'
 
         name = '%s_%d' % (basename, lineno)
         tests.append((name, pat, text, groups))
@@ -63,15 +63,11 @@ def read_tests(f):
 def test_tostr(t):
     lineno, pat, text, groups = t
     options = map(group_tostr, groups)
-    return 'mat!(match_%s, r"%s", r"%s", %s);' \
-           % (lineno, pat, '' if text == "NULL" else text, ', '.join(options))
+    return f"""mat!(match_{lineno}, r"{pat}", r"{'' if text == "NULL" else text}", {', '.join(options)});"""
 
 
 def group_tostr(g):
-    if g is None:
-        return 'None'
-    else:
-        return 'Some((%d, %d))' % (g[0], g[1])
+    return 'None' if g is None else 'Some((%d, %d))' % (g[0], g[1])
 
 
 if __name__ == '__main__':
@@ -102,6 +98,6 @@ if __name__ == '__main__':
     print(tpl.format(date=str(datetime.datetime.now())))
 
     for f in args.files:
-        print('// Tests from %s' % path.basename(f))
+        print(f'// Tests from {path.basename(f)}')
         print_tests(read_tests(f))
         print('')

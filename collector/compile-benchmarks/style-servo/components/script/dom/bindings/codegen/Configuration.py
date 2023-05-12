@@ -37,15 +37,12 @@ class Configuration:
 
             iface = thing
             self.interfaces[iface.identifier.name] = iface
-            if iface.identifier.name not in config:
-                # Completely skip consequential interfaces with no descriptor
-                # if they have no interface object because chances are we
-                # don't need to do anything interesting with them.
-                if iface.isConsequential() and not iface.hasInterfaceObject():
-                    continue
-                entry = {}
-            else:
+            if iface.identifier.name in config:
                 entry = config[iface.identifier.name]
+            elif iface.isConsequential() and not iface.hasInterfaceObject():
+                continue
+            else:
+                entry = {}
             if not isinstance(entry, list):
                 assert isinstance(entry, dict)
                 entry = [entry]
@@ -128,8 +125,9 @@ class Configuration:
 
         # We should have exactly one result.
         if len(descriptors) != 1:
-            raise NoSuchDescriptorError("For " + interfaceName + " found " +
-                                        str(len(descriptors)) + " matches")
+            raise NoSuchDescriptorError(
+                f"For {interfaceName} found {len(descriptors)} matches"
+            )
         return descriptors[0]
 
     def getDescriptorProvider(self):
@@ -174,11 +172,14 @@ class Descriptor(DescriptorProvider):
         DescriptorProvider.__init__(self, config)
         self.interface = interface
 
-        if not self.isExposedConditionally():
-            if interface.parent and interface.parent.isExposedConditionally():
-                raise TypeError("%s is not conditionally exposed but inherits from "
-                                "%s which is" %
-                                (interface.identifier.name, interface.parent.identifier.name))
+        if (
+            not self.isExposedConditionally()
+            and interface.parent
+            and interface.parent.isExposedConditionally()
+        ):
+            raise TypeError(
+                f"{interface.identifier.name} is not conditionally exposed but inherits from {interface.parent.identifier.name} which is"
+            )
 
         # Read the desc, and fill in the relevant defaults.
         ifaceName = self.interface.identifier.name
@@ -201,29 +202,29 @@ class Descriptor(DescriptorProvider):
         # Callback and SpiderMonkey types do not use JS smart pointers, so we should not use the
         # built-in rooting mechanisms for them.
         if spiderMonkeyInterface:
-            self.returnType = 'Rc<%s>' % typeName
-            self.argumentType = '&%s' % typeName
+            self.returnType = f'Rc<{typeName}>'
+            self.argumentType = f'&{typeName}'
             self.nativeType = typeName
-            pathDefault = 'dom::types::%s' % typeName
+            pathDefault = f'dom::types::{typeName}'
         elif self.interface.isCallback():
-            ty = 'dom::bindings::codegen::Bindings::%sBinding::%s' % (ifaceName, ifaceName)
+            ty = f'dom::bindings::codegen::Bindings::{ifaceName}Binding::{ifaceName}'
             pathDefault = ty
-            self.returnType = "Rc<%s>" % ty
+            self.returnType = f"Rc<{ty}>"
             self.argumentType = "???"
             self.nativeType = ty
         else:
-            self.returnType = "DomRoot<%s>" % typeName
-            self.argumentType = "&%s" % typeName
-            self.nativeType = "*const %s" % typeName
+            self.returnType = f"DomRoot<{typeName}>"
+            self.argumentType = f"&{typeName}"
+            self.nativeType = f"*const {typeName}"
             if self.interface.isIteratorInterface():
                 pathDefault = 'dom::bindings::iterable::IterableIterator'
             else:
-                pathDefault = 'dom::types::%s' % MakeNativeName(typeName)
+                pathDefault = f'dom::types::{MakeNativeName(typeName)}'
 
         self.concreteType = typeName
         self.register = desc.get('register', True)
         self.path = desc.get('path', pathDefault)
-        self.bindingPath = 'dom::bindings::codegen::Bindings::%s' % ('::'.join([ifaceName + 'Binding'] * 2))
+        self.bindingPath = f"dom::bindings::codegen::Bindings::{'::'.join([f'{ifaceName}Binding'] * 2)}"
         self.outerObjectHook = desc.get('outerObjectHook', 'None')
         self.proxy = False
         self.weakReferenceable = desc.get('weakReferenceable', False)
@@ -269,10 +270,10 @@ class Descriptor(DescriptorProvider):
                     def addIndexedOrNamedOperation(operation, m):
                         self.proxy = True
                         if m.isIndexed():
-                            operation = 'Indexed' + operation
+                            operation = f'Indexed{operation}'
                         else:
                             assert m.isNamed()
-                            operation = 'Named' + operation
+                            operation = f'Named{operation}'
                         addOperation(operation, m)
 
                     if m.isGetter():
@@ -432,7 +433,7 @@ def getTypesFromDescriptor(descriptor):
     """
     Get all argument and return types for all members of the descriptor
     """
-    members = [m for m in descriptor.interface.members]
+    members = list(descriptor.interface.members)
     if descriptor.interface.ctor():
         members.append(descriptor.interface.ctor())
     members.extend(descriptor.interface.namedConstructors)
@@ -477,4 +478,4 @@ def iteratorNativeType(descriptor, infer=False):
     assert descriptor.interface.isIterable()
     iterableDecl = descriptor.interface.maplikeOrSetlikeOrIterable
     assert iterableDecl.isPairIterator()
-    return "IterableIterator%s" % ("" if infer else '<%s>' % descriptor.interface.identifier.name)
+    return f"""IterableIterator{"" if infer else f'<{descriptor.interface.identifier.name}>'}"""

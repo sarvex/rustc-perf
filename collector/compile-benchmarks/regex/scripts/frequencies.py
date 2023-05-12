@@ -47,10 +47,7 @@ def main():
         freqs[i] = 0
 
     eprint('reading entire corpus into memory')
-    corpus = []
-    for fpath in args.corpus:
-        corpus.append(open(fpath, 'rb').read())
-
+    corpus = [open(fpath, 'rb').read() for fpath in args.corpus]
     eprint('computing byte frequencies')
     for c in corpus:
         for byte in c:
@@ -71,8 +68,9 @@ def main():
 
     # Now write Rust.
     olines = ['pub const BYTE_FREQUENCIES: [u8; 256] = [']
-    for byte in range(256):
-        olines.append('    %3d, // %r' % (rank[byte], chr(byte)))
+    olines.extend(
+        '    %3d, // %r' % (rank[byte], chr(byte)) for byte in range(256)
+    )
     olines.append('];')
 
     print(preamble)

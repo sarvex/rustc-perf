@@ -61,11 +61,18 @@ def WebIDLTest(parser, harness):
         harness.check(str(arguments[0].type), t,  "Expect an ArrayBuffer type")
         harness.ok(arguments[0].type.isSpiderMonkeyInterface(), "Should test as a js interface")
 
-        harness.check(str(arguments[1].type), t + "OrNull",  "Expect an ArrayBuffer type")
+        harness.check(
+            str(arguments[1].type), f"{t}OrNull", "Expect an ArrayBuffer type"
+        )
         harness.ok(arguments[1].type.inner.isSpiderMonkeyInterface(), "Should test as a js interface")
 
-        harness.check(str(arguments[2].type), t + "Sequence",  "Expect an ArrayBuffer type")
+        harness.check(
+            str(arguments[2].type),
+            f"{t}Sequence",
+            "Expect an ArrayBuffer type",
+        )
         harness.ok(arguments[2].type.inner.isSpiderMonkeyInterface(), "Should test as a js interface")
+
 
 
     checkStuff(members[0],  members[1],  "ArrayBuffer")

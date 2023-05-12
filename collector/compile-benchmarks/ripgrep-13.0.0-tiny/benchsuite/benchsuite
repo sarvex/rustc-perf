@@ -4,6 +4,7 @@
 benchsuite is a benchmark runner for comparing command line search tools.
 '''
 
+
 import argparse
 import csv
 import os
@@ -25,11 +26,11 @@ import time
 SUBTITLES_DIR = 'subtitles'
 SUBTITLES_EN_NAME = 'en.txt'
 SUBTITLES_EN_NAME_SAMPLE = 'en.sample.txt'
-SUBTITLES_EN_NAME_GZ = '%s.gz' % SUBTITLES_EN_NAME
+SUBTITLES_EN_NAME_GZ = f'{SUBTITLES_EN_NAME}.gz'
 # SUBTITLES_EN_URL = 'http://opus.lingfil.uu.se/OpenSubtitles2016/mono/OpenSubtitles2016.raw.en.gz'  # noqa
 SUBTITLES_EN_URL = 'https://object.pouta.csc.fi/OPUS-OpenSubtitles/v2016/mono/en.txt.gz'  # noqa
 SUBTITLES_RU_NAME = 'ru.txt'
-SUBTITLES_RU_NAME_GZ = '%s.gz' % SUBTITLES_RU_NAME
+SUBTITLES_RU_NAME_GZ = f'{SUBTITLES_RU_NAME}.gz'
 # SUBTITLES_RU_URL = 'http://opus.lingfil.uu.se/OpenSubtitles2016/mono/OpenSubtitles2016.raw.ru.gz'  # noqa
 SUBTITLES_RU_URL = 'https://object.pouta.csc.fi/OPUS-OpenSubtitles/v2016/mono/ru.txt.gz'  # noqa
 
@@ -259,29 +260,51 @@ def bench_linux_unicode_word(suite_dir):
         kwargs['cwd'] = cwd
         return Command(*args, **kwargs)
 
-    return Benchmark(pattern=pat, commands=[
-        mkcmd('rg', ['rg', '-n', pat]),
-        mkcmd('rg (ASCII)', ['rg', '-n', '(?-u)' + pat]),
-        mkcmd('ag (ASCII)', ['ag', '-s', pat]),
-        mkcmd(
-            'git grep',
-            ['git', 'grep', '-E', '-I', '-n', pat],
-            env={'LC_ALL': 'en_US.UTF-8'},
-        ),
-        mkcmd(
-            'git grep (ASCII)',
-            ['git', 'grep', '-E', '-I', '-n', pat],
-            env={'LC_ALL': 'C'},
-        ),
-        mkcmd('ugrep', [
-            'ugrep', '-r', '--ignore-files', '--no-hidden', '-I',
-            '-n', pat, './',
-        ]),
-        mkcmd('ugrep (ASCII)', [
-            'ugrep', '-r', '--ignore-files', '--no-hidden', '-I',
-            '-n', '-U', pat, './',
-        ]),
-    ])
+    return Benchmark(
+        pattern=pat,
+        commands=[
+            mkcmd('rg', ['rg', '-n', pat]),
+            mkcmd('rg (ASCII)', ['rg', '-n', f'(?-u){pat}']),
+            mkcmd('ag (ASCII)', ['ag', '-s', pat]),
+            mkcmd(
+                'git grep',
+                ['git', 'grep', '-E', '-I', '-n', pat],
+                env={'LC_ALL': 'en_US.UTF-8'},
+            ),
+            mkcmd(
+                'git grep (ASCII)',
+                ['git', 'grep', '-E', '-I', '-n', pat],
+                env={'LC_ALL': 'C'},
+            ),
+            mkcmd(
+                'ugrep',
+                [
+                    'ugrep',
+                    '-r',
+                    '--ignore-files',
+                    '--no-hidden',
+                    '-I',
+                    '-n',
+                    pat,
+                    './',
+                ],
+            ),
+            mkcmd(
+                'ugrep (ASCII)',
+                [
+                    'ugrep',
+                    '-r',
+                    '--ignore-files',
+                    '--no-hidden',
+                    '-I',
+                    '-n',
+                    '-U',
+                    pat,
+                    './',
+                ],
+            ),
+        ],
+    )
 
 
 def bench_linux_no_literal(suite_dir):
@@ -301,29 +324,51 @@ def bench_linux_no_literal(suite_dir):
         kwargs['cwd'] = cwd
         return Command(*args, **kwargs)
 
-    return Benchmark(pattern=pat, commands=[
-        mkcmd('rg', ['rg', '-n', pat]),
-        mkcmd('rg (ASCII)', ['rg', '-n', '(?-u)' + pat]),
-        mkcmd('ag (ASCII)', ['ag', '-s', pat]),
-        mkcmd(
-            'git grep',
-            ['git', 'grep', '-E', '-I', '-n', pat],
-            env={'LC_ALL': 'en_US.UTF-8'},
-        ),
-        mkcmd(
-            'git grep (ASCII)',
-            ['git', 'grep', '-E', '-I', '-n', pat],
-            env={'LC_ALL': 'C'},
-        ),
-        mkcmd('ugrep', [
-            'ugrep', '-r', '--ignore-files', '--no-hidden', '-I',
-            '-n', pat, './',
-        ]),
-        mkcmd('ugrep (ASCII)', [
-            'ugrep', '-r', '--ignore-files', '--no-hidden', '-I',
-            '-n', '-U', pat, './',
-        ]),
-    ])
+    return Benchmark(
+        pattern=pat,
+        commands=[
+            mkcmd('rg', ['rg', '-n', pat]),
+            mkcmd('rg (ASCII)', ['rg', '-n', f'(?-u){pat}']),
+            mkcmd('ag (ASCII)', ['ag', '-s', pat]),
+            mkcmd(
+                'git grep',
+                ['git', 'grep', '-E', '-I', '-n', pat],
+                env={'LC_ALL': 'en_US.UTF-8'},
+            ),
+            mkcmd(
+                'git grep (ASCII)',
+                ['git', 'grep', '-E', '-I', '-n', pat],
+                env={'LC_ALL': 'C'},
+            ),
+            mkcmd(
+                'ugrep',
+                [
+                    'ugrep',
+                    '-r',
+                    '--ignore-files',
+                    '--no-hidden',
+                    '-I',
+                    '-n',
+                    pat,
+                    './',
+                ],
+            ),
+            mkcmd(
+                'ugrep (ASCII)',
+                [
+                    'ugrep',
+                    '-r',
+                    '--ignore-files',
+                    '--no-hidden',
+                    '-I',
+                    '-n',
+                    '-U',
+                    pat,
+                    './',
+                ],
+            ),
+        ],
+    )
 
 
 def bench_linux_alternates(suite_dir):
@@ -497,15 +542,20 @@ def bench_subtitles_en_surrounding_words(suite_dir):
     en = path.join(suite_dir, SUBTITLES_DIR, SUBTITLES_EN_NAME_SAMPLE)
     pat = r'\w+\s+Holmes\s+\w+'
 
-    return Benchmark(pattern=pat, commands=[
-        Command('rg', ['rg', '-n', pat, en]),
-        Command('grep', ['grep', '-E', '-n', pat, en], env=GREP_UNICODE),
-        Command('ugrep', ['ugrep', '-n', pat, en]),
-        Command('rg (ASCII)', ['rg', '-n', '(?-u)' + pat, en]),
-        Command('ag (ASCII)', ['ag', '-s', pat, en]),
-        Command('grep (ASCII)', ['grep', '-E', '-n', pat, en], env=GREP_ASCII),
-        Command('ugrep (ASCII)', ['ugrep', '-n', '-U', pat, en])
-    ])
+    return Benchmark(
+        pattern=pat,
+        commands=[
+            Command('rg', ['rg', '-n', pat, en]),
+            Command('grep', ['grep', '-E', '-n', pat, en], env=GREP_UNICODE),
+            Command('ugrep', ['ugrep', '-n', pat, en]),
+            Command('rg (ASCII)', ['rg', '-n', f'(?-u){pat}', en]),
+            Command('ag (ASCII)', ['ag', '-s', pat, en]),
+            Command(
+                'grep (ASCII)', ['grep', '-E', '-n', pat, en], env=GREP_ASCII
+            ),
+            Command('ugrep (ASCII)', ['ugrep', '-n', '-U', pat, en]),
+        ],
+    )
 
 
 def bench_subtitles_en_no_literal(suite_dir):
@@ -521,14 +571,19 @@ def bench_subtitles_en_no_literal(suite_dir):
     en = path.join(suite_dir, SUBTITLES_DIR, SUBTITLES_EN_NAME_SAMPLE)
     pat = r'\w{5}\s+\w{5}\s+\w{5}\s+\w{5}\s+\w{5}\s+\w{5}\s+\w{5}'
 
-    return Benchmark(pattern=pat, commands=[
-        Command('rg', ['rg', '-n', pat, en]),
-        Command('ugrep', ['ugrep', '-n', pat, en]),
-        Command('rg (ASCII)', ['rg', '-n', '(?-u)' + pat, en]),
-        Command('ag (ASCII)', ['ag', '-s', pat, en]),
-        Command('grep (ASCII)', ['grep', '-E', '-n', pat, en], env=GREP_ASCII),
-        Command('ugrep (ASCII)', ['ugrep', '-n', '-U', pat, en])
-    ])
+    return Benchmark(
+        pattern=pat,
+        commands=[
+            Command('rg', ['rg', '-n', pat, en]),
+            Command('ugrep', ['ugrep', '-n', pat, en]),
+            Command('rg (ASCII)', ['rg', '-n', f'(?-u){pat}', en]),
+            Command('ag (ASCII)', ['ag', '-s', pat, en]),
+            Command(
+                'grep (ASCII)', ['grep', '-E', '-n', pat, en], env=GREP_ASCII
+            ),
+            Command('ugrep (ASCII)', ['ugrep', '-n', '-U', pat, en]),
+        ],
+    )
 
 
 def bench_subtitles_ru_literal(suite_dir):
@@ -674,14 +729,19 @@ def bench_subtitles_ru_no_literal(suite_dir):
     ru = path.join(suite_dir, SUBTITLES_DIR, SUBTITLES_RU_NAME)
     pat = r'\w{5}\s+\w{5}\s+\w{5}\s+\w{5}\s+\w{5}\s+\w{5}\s+\w{5}'
 
-    return Benchmark(pattern=pat, commands=[
-        Command('rg', ['rg', '-n', pat, ru]),
-        Command('ugrep', ['ugrep', '-n', pat, ru]),
-        Command('rg (ASCII)', ['rg', '-n', '(?-u)' + pat, ru]),
-        Command('ag (ASCII)', ['ag', '-s', pat, ru]),
-        Command('grep (ASCII)', ['grep', '-E', '-n', pat, ru], env=GREP_ASCII),
-        Command('ugrep (ASCII)', ['ugrep', '-n', '-U', pat, ru])
-    ])
+    return Benchmark(
+        pattern=pat,
+        commands=[
+            Command('rg', ['rg', '-n', pat, ru]),
+            Command('ugrep', ['ugrep', '-n', pat, ru]),
+            Command('rg (ASCII)', ['rg', '-n', f'(?-u){pat}', ru]),
+            Command('ag (ASCII)', ['ag', '-s', pat, ru]),
+            Command(
+                'grep (ASCII)', ['grep', '-E', '-n', pat, ru], env=GREP_ASCII
+            ),
+            Command('ugrep (ASCII)', ['ugrep', '-n', '-U', pat, ru]),
+        ],
+    )
 
 
 class MissingDependencies(Exception):
@@ -699,7 +759,7 @@ class MissingDependencies(Exception):
         self.missing_names = missing_names
 
     def __str__(self):
-        return 'MissingDependency(%s)' % repr(self.missing_names)
+        return f'MissingDependency({repr(self.missing_names)})'
 
 
 class MissingCommands(Exception):
@@ -716,7 +776,7 @@ class MissingCommands(Exception):
         self.missing_names = sorted(set(missing_names))
 
     def __str__(self):
-        return 'MissingCommands(%s)' % repr(self.missing_names)
+        return f'MissingCommands({repr(self.missing_names)})'
 
 
 class Benchmark(object):
@@ -788,12 +848,12 @@ class Benchmark(object):
         least one command in this benchmark could not be found on this
         system.
         '''
-        missing_commands = []
-        for c in self.commands:
-            if c.binary_name in self.disabled_cmds or c.exists():
-                continue
-            missing_commands.append(c.binary_name)
-        if not self.allow_missing_commands and len(missing_commands) > 0:
+        missing_commands = [
+            c.binary_name
+            for c in self.commands
+            if c.binary_name not in self.disabled_cmds and not c.exists()
+        ]
+        if not self.allow_missing_commands and missing_commands:
             raise MissingCommands(missing_commands)
 
     def run(self):
@@ -849,9 +909,7 @@ class Benchmark(object):
         completed = cmd.run()
         end = time.time()
 
-        line_count = None
-        if self.line_count:
-            line_count = completed.stdout.count(b'\n')
+        line_count = completed.stdout.count(b'\n') if self.line_count else None
         return {
             'duration': end - start,
             'line_count': line_count,
@@ -941,10 +999,10 @@ class Result(object):
             A tuple containing the mean and standard deviation, in that
             order.
         '''
-        samples = list(s['duration'] for s in self.samples_for(cmd))
-        if len(samples) == 0:
+        if samples := [s['duration'] for s in self.samples_for(cmd)]:
+            return statistics.mean(samples), statistics.stdev(samples)
+        else:
             return None, None
-        return statistics.mean(samples), statistics.stdev(samples)
 
 
 class Command(object):
@@ -1004,7 +1062,7 @@ def run_cmd(cmd, *args, **kwargs):
 
     If the command fails, throw a traceback.
     '''
-    eprint('# %s' % ' '.join(cmd))
+    eprint(f"# {' '.join(cmd)}")
     kwargs['check'] = True
     return subprocess.run(cmd, *args, **kwargs)
 
@@ -1018,9 +1076,9 @@ def require(suite_dir, *names):
     errs = []
     for name in names:
         fun_name = name.replace('-', '_')
-        if not globals()['has_%s' % fun_name](suite_dir):
+        if not globals()[f'has_{fun_name}'](suite_dir):
             errs.append(name)
-    if len(errs) > 0:
+    if errs:
         raise MissingDependencies(errs)
 
 
@@ -1108,18 +1166,18 @@ def download(suite_dir, choices):
         all, linux, subtitles-en, subtitles-ru.
     '''
     for choice in choices:
-        if choice == 'linux':
+        if choice == 'all':
+            download_linux(suite_dir)
+            download_subtitles_en(suite_dir)
+            download_subtitles_ru(suite_dir)
+        elif choice == 'linux':
             download_linux(suite_dir)
         elif choice == 'subtitles-en':
             download_subtitles_en(suite_dir)
         elif choice == 'subtitles-ru':
             download_subtitles_ru(suite_dir)
-        elif choice == 'all':
-            download_linux(suite_dir)
-            download_subtitles_en(suite_dir)
-            download_subtitles_ru(suite_dir)
         else:
-            eprint('Unrecognized download choice: %s' % choice)
+            eprint(f'Unrecognized download choice: {choice}')
             sys.exit(1)
 
 
@@ -1141,14 +1199,13 @@ def collect_benchmarks(suite_dir, filter_pat=None,
         emitted to stderr and it is not yielded.
     '''
     benchmarks = []
-    for global_name in globals():
+    for global_name, fun in globals().items():
         if not global_name.startswith('bench_'):
             continue
         name = re.sub('^bench_', '', global_name)
         if filter_pat is not None and not re.search(filter_pat, name):
             continue
         try:
-            fun = globals()[global_name]
             benchmark = fun(suite_dir)
             benchmark.name = name
             benchmark.warmup_count = warmup_iter
@@ -1159,11 +1216,8 @@ def collect_benchmarks(suite_dir, filter_pat=None,
             benchmark.raise_if_missing()
         except MissingDependencies as e:
             eprint(
-                'missing: %s, skipping benchmark %s (try running with: %s)' % (
-                    ', '.join(e.missing_names),
-                    name,
-                    ' '.join(['--download %s' % n for n in e.missing_names]),
-                ))
+                f"missing: {', '.join(e.missing_names)}, skipping benchmark {name} (try running with: {' '.join([f'--download {n}' for n in e.missing_names])})"
+            )
             continue
         except MissingCommands as e:
             fmt = 'missing commands: %s, skipping benchmark %s ' \
@@ -1175,20 +1229,18 @@ def collect_benchmarks(suite_dir, filter_pat=None,
 
 
 def main():
-    download_choices = ['all', 'linux', 'subtitles-en', 'subtitles-ru']
     p = argparse.ArgumentParser('Command line search tool benchmark suite.')
     p.add_argument(
         '--dir', metavar='PATH', default=os.getcwd(),
         help='The directory in which to download data and perform searches.')
+    download_choices = ['all', 'linux', 'subtitles-en', 'subtitles-ru']
     p.add_argument(
-        '--download', metavar='CORPUS', action='append',
+        '--download',
+        metavar='CORPUS',
+        action='append',
         choices=download_choices,
-        help='Download and prepare corpus data, then exit without running '
-             'any benchmarks. Note that this command is intended to be '
-             'idempotent. WARNING: This downloads over a gigabyte of data, '
-             'and also includes building the Linux kernel. If "all" is used '
-             'then the total uncompressed size is around 13 GB. '
-             'Choices: %s' % ', '.join(download_choices))
+        help=f"""Download and prepare corpus data, then exit without running any benchmarks. Note that this command is intended to be idempotent. WARNING: This downloads over a gigabyte of data, and also includes building the Linux kernel. If "all" is used then the total uncompressed size is around 13 GB. Choices: {', '.join(download_choices)}""",
+    )
     p.add_argument(
         '--allow-missing', action='store_true',
         help='Permit benchmarks to run even if some commands are missing.')
@@ -1233,7 +1285,7 @@ def main():
     if not path.isdir(args.dir):
         os.makedirs(args.dir)
     if args.raw is not None and path.exists(args.raw) and not args.force:
-        eprint('File %s already exists (delete it or use --force)' % args.raw)
+        eprint(f'File {args.raw} already exists (delete it or use --force)')
         sys.exit(1)
     raw_handle, raw_csv_wtr = None, None
     if args.raw is not None:
@@ -1258,7 +1310,7 @@ def main():
 
         if i > 0:
             print()
-        header = '%s (pattern: %s)' % (b.name, b.pattern)
+        header = f'{b.name} (pattern: {b.pattern})'
         print('%s\n%s' % (header, '-' * len(header)))
         for cmd in b.commands:
             name = cmd.name
@@ -1275,7 +1327,7 @@ def main():
                 name += '*'
             if len(line_counts) > 0:
                 counts = map(str, line_counts)
-                show_line_counts = ' (lines: %s)' % ', '.join(counts)
+                show_line_counts = f" (lines: {', '.join(counts)})"
             fmt = '{name:{pad}} {mean:0.3f} +/- {stdev:0.3f}{lines}{fast_cmd}'
             print(fmt.format(
                 name=name, pad=max_name_len + 2, fast_cmd=show_fast_cmd,
@@ -1285,8 +1337,7 @@ def main():
         if raw_csv_wtr is not None:
             for sample in result.samples:
                 cmd, duration = sample['cmd'], sample['duration']
-                env = ' '.join(['%s=%s' % (k, v)
-                                for k, v in cmd.kwargs.get('env', {}).items()])
+                env = ' '.join([f'{k}={v}' for k, v in cmd.kwargs.get('env', {}).items()])
                 raw_csv_wtr.writerow({
                     'benchmark': b.name,
                     'warmup_iter': b.warmup_count,

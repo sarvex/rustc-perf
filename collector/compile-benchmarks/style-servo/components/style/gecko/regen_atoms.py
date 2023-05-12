@@ -25,17 +25,17 @@ PRELUDE = """
 
 
 def gnu_symbolify(source, ident):
-    return "_ZN{}{}{}{}E".format(len(source.CLASS), source.CLASS, len(ident), ident)
+    return f"_ZN{len(source.CLASS)}{source.CLASS}{len(ident)}{ident}E"
 
 
 def msvc64_symbolify(source, ident):
-    return "?{}@{}@@2PEAV{}@@EA".format(ident, source.CLASS, source.TYPE)
+    return f"?{ident}@{source.CLASS}@@2PEAV{source.TYPE}@@EA"
 
 
 def msvc32_symbolify(source, ident):
     # Prepend "\x01" to avoid LLVM prefixing the mangled name with "_".
     # See https://github.com/rust-lang/rust/issues/36097
-    return "\\x01?{}@{}@@2PAV{}@@A".format(ident, source.CLASS, source.TYPE)
+    return f"\\x01?{ident}@{source.CLASS}@@2PAV{source.TYPE}@@A"
 
 
 class GkAtomSource:
@@ -71,13 +71,13 @@ SOURCES = [
 def map_atom(ident):
     if ident in {"box", "loop", "match", "mod", "ref",
                  "self", "type", "use", "where", "in"}:
-        return ident + "_"
+        return f"{ident}_"
     return ident
 
 
 class Atom:
     def __init__(self, source, macro_name, ident, value):
-        self.ident = "{}_{}".format(source.CLASS, ident)
+        self.ident = f"{source.CLASS}_{ident}"
         self.original_ident = ident
         self.value = value
         self.source = source
@@ -110,8 +110,7 @@ class Atom:
         return self.macro == "CSS_NON_INHERITING_ANON_BOX"
 
     def is_inheriting_anon_box(self):
-        return (self.macro == "CSS_ANON_BOX" or
-                self.macro == "CSS_WRAPPER_ANON_BOX")
+        return self.macro in ["CSS_ANON_BOX", "CSS_WRAPPER_ANON_BOX"]
 
     def is_tree_pseudo_element(self):
         return self.value.startswith(":-moz-tree-")
@@ -122,10 +121,9 @@ def collect_atoms(objdir):
     for source in SOURCES:
         path = os.path.abspath(os.path.join(objdir, source.FILE))
         with open(path) as f:
-            for line in f.readlines():
-                result = re.match(source.PATTERN, line)
-                if result:
-                    atoms.append(Atom(source, result.group(1), result.group(2), result.group(3)))
+            for line in f:
+                if result := re.match(source.PATTERN, line):
+                    atoms.append(Atom(source, result[1], result[2], result[3]))
     return atoms
 
 
@@ -147,7 +145,7 @@ class FileAvoidWrite(BytesIO):
             with open(self.name, 'rb') as f:
                 old_content = f.read()
                 if old_content == buf:
-                    print("{} is not changed, skip".format(self.name))
+                    print(f"{self.name} is not changed, skip")
                     return
         except IOError:
             pass
@@ -235,11 +233,11 @@ def write_atom_macro(atoms, file_name):
 
 
 def write_pseudo_elements(atoms, target_filename):
-    pseudos = []
-    for atom in atoms:
-        if atom.type() == "nsICSSPseudoElement" or atom.type() == "nsICSSAnonBoxPseudo":
-            pseudos.append(atom)
-
+    pseudos = [
+        atom
+        for atom in atoms
+        if atom.type() in ["nsICSSPseudoElement", "nsICSSAnonBoxPseudo"]
+    ]
     pseudo_definition_template = os.path.join(GECKO_DIR, "pseudo_element_definition.mako.rs")
     contents = build.render(pseudo_definition_template, PSEUDOS=pseudos)
 
@@ -255,6 +253,6 @@ def generate_atoms(dist, out):
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
-        print("Usage: {} dist out".format(sys.argv[0]))
+        print(f"Usage: {sys.argv[0]} dist out")
         exit(2)
     generate_atoms(sys.argv[1], sys.argv[2])

@@ -6,8 +6,7 @@ import string
 def chain(*iterables):
     # chain('ABC', 'DEF') --> A B C D E F
     for it in iterables:
-        for element in it:
-            yield element
+        yield from it
 
 # We'd like to use itertools.combinations but it's 2.6 or higher.
 def combinations(iterable, r):
@@ -98,11 +97,13 @@ def WebIDLTest(parser, harness):
 
     def typesAreDistinguishable(t):
         return all(u[0].isDistinguishableFrom(u[1]) for u in combinations(t, 2))
+
     def typesAreNotDistinguishable(t):
         return any(not u[0].isDistinguishableFrom(u[1]) for u in combinations(t, 2))
+
     def unionTypeName(t):
         if len(t) > 2:
-            t[0:2] = [unionTypeName(t[0:2])]
+            t[:2] = [unionTypeName(t[:2])]
         return "(" + " or ".join(t) + ")"
 
     # typeCombinations is an iterable of tuples containing the name of the type

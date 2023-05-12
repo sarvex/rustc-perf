@@ -20,20 +20,20 @@ class TestHarness(object):
 
     def finish(self):
         if self.verbose or self.printed_intro:
-            print("Finished test %s" % self.test)
+            print(f"Finished test {self.test}")
 
     def maybe_print_intro(self):
         if not self.printed_intro:
-            print("Starting test %s" % self.test)
+            print(f"Starting test {self.test}")
             self.printed_intro = True
 
     def test_pass(self, msg):
         if self.verbose:
-            print("TEST-PASS | %s" % msg)
+            print(f"TEST-PASS | {msg}")
 
     def test_fail(self, msg):
         self.maybe_print_intro()
-        print("TEST-UNEXPECTED-FAIL | %s" % msg)
+        print(f"TEST-UNEXPECTED-FAIL | {msg}")
 
     def ok(self, condition, msg):
         if condition:

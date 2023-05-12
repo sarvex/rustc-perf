@@ -11,8 +11,10 @@ import urllib
 
 def main(filename):
     names = [
-        re.search('>([^>]+)(</dfn>|<a class="self-link")', line).group(1)
-        for line in urllib.urlopen("https://drafts.csswg.org/css-counter-styles/")
+        re.search('>([^>]+)(</dfn>|<a class="self-link")', line)[1]
+        for line in urllib.urlopen(
+            "https://drafts.csswg.org/css-counter-styles/"
+        )
         if 'data-dfn-for="<counter-style-name>"' in line
         or 'data-dfn-for="<counter-style>"' in line
     ]

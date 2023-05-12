@@ -20,7 +20,9 @@ TO_PUBLISH = [
 
 def already_published(name, version):
     try:
-        urllib.request.urlopen('https://crates.io/api/v1/crates/%s/%s/download' % (name, version))
+        urllib.request.urlopen(
+            f'https://crates.io/api/v1/crates/{name}/{version}/download'
+        )
     except HTTPError as e:
         if e.code == 404:
             return False
@@ -30,10 +32,10 @@ def already_published(name, version):
 
 def maybe_publish(path):
     content = open(os.path.join(path, 'Cargo.toml')).read()
-    name = re.search('^name = "([^"]+)"', content, re.M).group(1)
-    version = re.search('^version = "([^"]+)"', content, re.M).group(1)
+    name = re.search('^name = "([^"]+)"', content, re.M)[1]
+    version = re.search('^version = "([^"]+)"', content, re.M)[1]
     if already_published(name, version):
-        print('%s %s is already published, skipping' % (name, version))
+        print(f'{name} {version} is already published, skipping')
         return False
     subprocess.check_call(['cargo', 'publish', '--no-verify'], cwd=path)
     return True
@@ -42,12 +44,11 @@ def maybe_publish(path):
 def main():
     print('Starting publish...')
     for i, path in enumerate(TO_PUBLISH):
-        if maybe_publish(path):
-            if i < len(TO_PUBLISH)-1:
-                # Sleep to allow the index to update. This should probably
-                # check that the index is updated, or use a retry loop
-                # instead.
-                time.sleep(5)
+        if maybe_publish(path) and i < len(TO_PUBLISH) - 1:
+            # Sleep to allow the index to update. This should probably
+            # check that the index is updated, or use a retry loop
+            # instead.
+            time.sleep(5)
     print('Publish complete!')
 
 

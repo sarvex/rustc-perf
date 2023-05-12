@@ -25,7 +25,7 @@ def WebIDLTest(parser, harness):
                "Should be an IDLInterface")
     harness.check(iface.identifier.QName(), "::TestOverloads", "Interface has the right QName")
     harness.check(iface.identifier.name, "TestOverloads", "Interface has the right name")
-    harness.check(len(iface.members), 4, "Expect %s members" % 4)
+    harness.check(len(iface.members), 4, 'Expect 4 members')
 
     member = iface.members[0]
     harness.check(member.identifier.QName(), "::TestOverloads::basic", "Method has the right QName")

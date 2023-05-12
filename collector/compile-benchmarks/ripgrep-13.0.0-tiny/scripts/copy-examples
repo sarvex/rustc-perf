@@ -28,6 +28,6 @@ if __name__ == '__main__':
             continue
 
         code = '\n'.join(RE_STRIP_COMMENT.sub('', line) for line in codelines)
-        fpath = os.path.join(args.example_dir, m.group(1))
+        fpath = os.path.join(args.example_dir, m[1])
         with codecs.open(fpath, mode='w+', encoding='utf-8') as f:
             print(code, file=f)

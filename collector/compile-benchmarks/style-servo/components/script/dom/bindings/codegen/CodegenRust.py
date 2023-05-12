@@ -107,7 +107,7 @@ def wrapInNativeContainerType(type, inner):
     else:
         raise TypeError("Unexpected container type %s", type)
 
-    return CGWrapper(inner, pre=containerType + "<", post=">")
+    return CGWrapper(inner, pre=f"{containerType}<", post=">")
 
 
 builtinNames = {
@@ -149,9 +149,7 @@ def indent(s, indentLevel=2):
     Weird secret feature: this doesn't indent lines that start with # (such as
     #include lines or #ifdef/#endif).
     """
-    if s == "":
-        return s
-    return re.sub(lineStartDetector, indentLevel * " ", s)
+    return s if s == "" else re.sub(lineStartDetector, indentLevel * " ", s)
 
 
 # dedent() and fill() are often called on the same string multiple
@@ -223,7 +221,7 @@ def compile_fill_template(template):
             raise ValueError("Invalid fill() template: $*{%s} must appear by itself on a line" % name)
 
         # Now replace this whole line of template with the indented equivalent.
-        modified_name = name + "_" + str(depth)
+        modified_name = f"{name}_{depth}"
         argModList.append((name, modified_name, depth))
         return "${" + modified_name + "}"
 
@@ -371,16 +369,20 @@ class CGMethodCall(CGThing):
                     if condition is None:
                         caseBody.append(call)
                     else:
-                        caseBody.append(CGGeneric("if " + condition + " {"))
+                        caseBody.append(CGGeneric(f"if {condition}" + " {"))
                         caseBody.append(CGIndenter(call))
                         caseBody.append(CGGeneric("}"))
                     return True
                 return False
 
             # First check for null or undefined
-            pickFirstSignature("%s.get().is_null_or_undefined()" % distinguishingArg,
-                               lambda s: (s[1][distinguishingIndex].type.nullable() or
-                                          s[1][distinguishingIndex].type.isDictionary()))
+            pickFirstSignature(
+                f"{distinguishingArg}.get().is_null_or_undefined()",
+                lambda s: (
+                    s[1][distinguishingIndex].type.nullable()
+                    or s[1][distinguishingIndex].type.isDictionary()
+                ),
+            )
 
             # Now check for distinguishingArg being an object that implements a
             # non-callback interface.  That includes typed arrays and
@@ -392,7 +394,7 @@ class CGMethodCall(CGThing):
             # There might be more than one of these; we need to check
             # which ones we unwrap to.
 
-            if len(interfacesSigs) > 0:
+            if interfacesSigs:
                 # The spec says that we should check for "platform objects
                 # implementing an interface", but it's enough to guard on these
                 # being an object.  The code for unwrapping non-callback
@@ -439,11 +441,13 @@ class CGMethodCall(CGThing):
             # XXXbz Now we're supposed to check for distinguishingArg being
             # an array or a platform object that supports indexed
             # properties... skip that last for now.  It's a bit of a pain.
-            pickFirstSignature("%s.get().is_object() && is_array_like(cx, %s)" %
-                               (distinguishingArg, distinguishingArg),
-                               lambda s:
-                                   (s[1][distinguishingIndex].type.isSequence() or
-                                    s[1][distinguishingIndex].type.isObject()))
+            pickFirstSignature(
+                f"{distinguishingArg}.get().is_object() && is_array_like(cx, {distinguishingArg})",
+                lambda s: (
+                    s[1][distinguishingIndex].type.isSequence()
+                    or s[1][distinguishingIndex].type.isObject()
+                ),
+            )
 
             # Check for Date objects
             # XXXbz Do we need to worry about security wrappers around the Date?
@@ -458,12 +462,15 @@ class CGMethodCall(CGThing):
 
             # Check for vanilla JS objects
             # XXXbz Do we need to worry about security wrappers?
-            pickFirstSignature("%s.get().is_object() && !is_platform_object(%s.get().to_object())" %
-                               (distinguishingArg, distinguishingArg),
-                               lambda s: (s[1][distinguishingIndex].type.isCallback() or
-                                          s[1][distinguishingIndex].type.isCallbackInterface() or
-                                          s[1][distinguishingIndex].type.isDictionary() or
-                                          s[1][distinguishingIndex].type.isObject()))
+            pickFirstSignature(
+                f"{distinguishingArg}.get().is_object() && !is_platform_object({distinguishingArg}.get().to_object())",
+                lambda s: (
+                    s[1][distinguishingIndex].type.isCallback()
+                    or s[1][distinguishingIndex].type.isCallbackInterface()
+                    or s[1][distinguishingIndex].type.isDictionary()
+                    or s[1][distinguishingIndex].type.isObject()
+                ),
+            )
 
             # The remaining cases are mutually exclusive.  The
             # pickFirstSignature calls are what change caseBody
@@ -530,7 +537,7 @@ def typeIsSequenceOrHasSequenceMember(type):
 
 def union_native_type(t):
     name = t.unroll().name
-    return 'UnionTypes::%s' % name
+    return f'UnionTypes::{name}'
 
 
 class JSToNativeConversionInfo():

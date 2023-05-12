@@ -29,7 +29,7 @@ if is_linux():
         # TODO: Set up LD_LIBRARY_PATH to SwiftShader libraries automatically.
         renderer = 'es3'
     else:
-        print('Unknown renderer ' + requested_renderer)
+        print(f'Unknown renderer {requested_renderer}')
         sys.exit(1)
 
     cmd = [

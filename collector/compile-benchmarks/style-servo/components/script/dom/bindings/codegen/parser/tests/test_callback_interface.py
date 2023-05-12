@@ -89,6 +89,8 @@ def WebIDLTest(parser, harness):
     """)
     results = parser.finish()
     for (i, iface) in enumerate(results):
-      harness.check(iface.isSingleOperationInterface(), i < 4,
-                    "Interface %s should be a single operation interface" %
-                    iface.identifier.name)
+        harness.check(
+            iface.isSingleOperationInterface(),
+            i < 4,
+            f"Interface {iface.identifier.name} should be a single operation interface",
+        )

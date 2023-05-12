@@ -27,7 +27,7 @@ def parseInt(literal):
         sign = 1
 
     if string[0] == '0' and len(string) > 1:
-        if string[1] == 'x' or string[1] == 'X':
+        if string[1] in ['x', 'X']:
             base = 16
             string = string[2:]
         else:
@@ -56,7 +56,7 @@ def enum(*names, **kw):
         base = kw['base'].__class__
         start = base.length
     else:
-        assert len(kw) == 0
+        assert not kw
         base = object
         start = 0
 
@@ -113,7 +113,7 @@ class Location(object):
 
     def get(self):
         self.resolve()
-        return "%s line %s:%s" % (self._file, self._lineno, self._colno)
+        return f"{self._file} line {self._lineno}:{self._colno}"
 
     def _pointerline(self):
         return " " * self._colno + "^"
@@ -151,7 +151,7 @@ class BuiltinLocation(object):
 class IDLObject(object):
     def __init__(self, location):
         self.location = location
-        self.userData = dict()
+        self.userData = {}
 
     def filename(self):
         return self.location.filename()
@@ -248,9 +248,7 @@ class IDLScope(IDLObject):
         return self.QName()
 
     def QName(self):
-        if self._name:
-            return self._name.QName() + "::"
-        return "::"
+        return f"{self._name.QName()}::" if self._name else "::"
 
     def ensureUnique(self, identifier, object):
         """
@@ -316,8 +314,9 @@ class IDLScope(IDLObject):
                                                      newObject.location)
 
         raise WebIDLError(
-            "Multiple unresolvable definitions of identifier '%s' in scope '%s%s"
-            % (identifier.name, str(self), conflictdesc), [])
+            f"Multiple unresolvable definitions of identifier '{identifier.name}' in scope '{str(self)}{conflictdesc}",
+            [],
+        )
 
     def _lookupIdentifier(self, identifier):
         return self._dict[identifier.name]
@@ -369,8 +368,7 @@ class IDLUnresolvedIdentifier(IDLObject):
             name = name[1:]
         if (name in ["constructor", "toString"] and
             not allowForbidden):
-            raise WebIDLError("Cannot use reserved identifier '%s'" % (name),
-                              [location])
+            raise WebIDLError(f"Cannot use reserved identifier '{name}'", [location])
 
         self.name = name
 
@@ -378,7 +376,7 @@ class IDLUnresolvedIdentifier(IDLObject):
         return self.QName()
 
     def QName(self):
-        return "<unresolved scope>::" + self.name
+        return f"<unresolved scope>::{self.name}"
 
     def resolve(self, scope, object):
         assert isinstance(scope, IDLScope)
@@ -421,8 +419,8 @@ class IDLObjectWithIdentifier(IDLObject):
         A helper function to deal with TreatNullAs.  Returns the list
         of attrs it didn't handle itself.
         """
-        assert isinstance(self, IDLArgument) or isinstance(self, IDLAttribute)
-        unhandledAttrs = list()
+        assert isinstance(self, (IDLArgument, IDLAttribute))
+        unhandledAttrs = []
         for attr in attrs:
             if not attr.hasValue():
                 unhandledAttrs.append(attr)
@@ -467,8 +465,7 @@ class IDLIdentifierPlaceholder(IDLObjectWithIdentifier):
         try:
             scope._lookupIdentifier(self.identifier)
         except:
-            raise WebIDLError("Unresolved type '%s'." % self.identifier,
-                              [self.location])
+            raise WebIDLError(f"Unresolved type '{self.identifier}'.", [self.location])
 
         obj = self.identifier.resolve(scope, None)
         return scope.lookupIdentifier(obj)
@@ -491,8 +488,7 @@ class IDLExposureMixins():
         # Verify that our [Exposed] value, if any, makes sense.
         for globalName in self._exposureGlobalNames:
             if globalName not in scope.globalNames:
-                raise WebIDLError("Unknown [Exposed] value %s" % globalName,
-                                  [self._location])
+                raise WebIDLError(f"Unknown [Exposed] value {globalName}", [self._location])
 
         if len(self._exposureGlobalNames) == 0:
             self._exposureGlobalNames.add(scope.primaryGlobalName)
@@ -555,7 +551,6 @@ class IDLExternalInterface(IDLObjectWithIdentifier, IDLExposureMixins):
 
     def finish(self, scope):
         IDLExposureMixins.finish(self, scope)
-        pass
 
     def validate(self):
         pass
@@ -700,14 +695,14 @@ class IDLInterfaceOrNamespace(IDLObjectWithScope, IDLExposureMixins):
         # namedConstructors needs deterministic ordering because bindings code
         # outputs the constructs in the order that namedConstructors enumerates
         # them.
-        self.namedConstructors = list()
+        self.namedConstructors = []
         self.implementedInterfaces = set()
         self._consequential = False
         self._isKnownNonPartial = False
         # self.interfacesBasedOnSelf is the set of interfaces that inherit from
         # self or have self as a consequential interface, including self itself.
         # Used for distinguishability checking.
-        self.interfacesBasedOnSelf = set([self])
+        self.interfacesBasedOnSelf = {self}
         # self.interfacesImplementingSelf is the set of interfaces that directly
         # have self as a consequential interface
         self.interfacesImplementingSelf = set()

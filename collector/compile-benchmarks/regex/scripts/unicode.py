@@ -55,11 +55,10 @@ expanded_categories = {
 
 def fetch(f):
     if not os.path.exists(f):
-        os.system("curl -O http://www.unicode.org/Public/UNIDATA/%s"
-                  % f)
+        os.system(f"curl -O http://www.unicode.org/Public/UNIDATA/{f}")
 
     if not os.path.exists(f):
-        sys.stderr.write("cannot load %s" % f)
+        sys.stderr.write(f"cannot load {f}")
         exit(1)
 
 def is_surrogate(n):
@@ -109,10 +108,7 @@ def load_unicode_data(f):
     return gencats
 
 def group_cats(cats):
-    cats_out = {}
-    for cat in cats:
-        cats_out[cat] = group_cat(cats[cat])
-    return cats_out
+    return {cat: group_cat(cats[cat]) for cat in cats}
 
 def group_cat(cat):
     cat_out = []
@@ -120,8 +116,7 @@ def group_cat(cat):
     cur_start = letters.pop(0)
     cur_end = cur_start
     for letter in letters:
-        assert letter > cur_end, \
-            "cur_end: %s, letter: %s" % (hex(cur_end), hex(letter))
+        assert letter > cur_end, f"cur_end: {hex(cur_end)}, letter: {hex(letter)}"
         if letter == cur_end + 1:
             cur_end = letter
         else:
@@ -148,10 +143,7 @@ def format_table_content(f, content, indent):
     first = True
     for chunk in content.split(","):
         if len(line) + len(chunk) < 78:
-            if first:
-                line += chunk
-            else:
-                line += ", " + chunk
+            line += chunk if first else f", {chunk}"
             first = False
         else:
             f.write(line + ",\n")
@@ -168,19 +160,16 @@ def load_properties(f, interestingprops):
         prop = None
         d_lo = 0
         d_hi = 0
-        m = re1.match(line)
-        if m:
-            d_lo = m.group(1)
-            d_hi = m.group(1)
-            prop = m.group(2)
+        if m := re1.match(line):
+            d_lo = m[1]
+            d_hi = m[1]
+            prop = m[2]
+        elif m := re2.match(line):
+            d_lo = m[1]
+            d_hi = m[2]
+            prop = m[3]
         else:
-            m = re2.match(line)
-            if m:
-                d_lo = m.group(1)
-                d_hi = m.group(2)
-                prop = m.group(3)
-            else:
-                continue
+            continue
         if interestingprops and prop not in interestingprops:
             continue
         d_lo = int(d_lo, 16)
@@ -200,10 +189,9 @@ def load_case_folding(f):
     re1 = re.compile("^ *([0-9A-F]+) *; *[CS] *; *([0-9A-F]+) *;")
     all_pairs = defaultdict(list)
     for line in fileinput.input(f):
-        m = re1.match(line)
-        if m:
-            a = int(m.group(1), 16)
-            b = int(m.group(2), 16)
+        if m := re1.match(line):
+            a = int(m[1], 16)
+            b = int(m[2], 16)
             all_pairs[a].append(b)
             all_pairs[b].append(a)
     both = set()
@@ -218,11 +206,8 @@ def load_case_folding(f):
 def escape_char(c):
     return "'\\u{%x}'" % c
 
-def emit_table(f, name, t_data, t_type = "&'static [(char, char)]", is_pub=True,
-        pfun=lambda x: "(%s,%s)" % (escape_char(x[0]), escape_char(x[1]))):
-    pub_string = ""
-    if is_pub:
-        pub_string = "pub "
+def emit_table(f, name, t_data, t_type = "&'static [(char, char)]", is_pub=True, pfun=lambda x: f"({escape_char(x[0])},{escape_char(x[1])})"):
+    pub_string = "pub " if is_pub else ""
     f.write("    %sconst %s: %s = &[\n" % (pub_string, name, t_type))
     data = ""
     first = True
@@ -239,13 +224,13 @@ def emit_property_module(f, mod, tbl):
     keys = tbl.keys()
     keys.sort()
     for cat in keys:
-        emit_table(f, "%s_table" % cat, tbl[cat])
+        emit_table(f, f"{cat}_table", tbl[cat])
     f.write("}\n\n")
 
 def emit_regex_module(f, cats, w_data):
     f.write("pub mod regex {\n")
     regex_class = "&'static [(char, char)]"
-    class_table = "&'static [(&'static str, %s)]" % regex_class
+    class_table = f"&'static [(&'static str, {regex_class})]"
 
     emit_table(f, "UNICODE_CLASSES", cats, class_table,
         pfun=lambda x: "(\"%s\",super::%s::%s_table)" % (x[0], x[1], x[0]))

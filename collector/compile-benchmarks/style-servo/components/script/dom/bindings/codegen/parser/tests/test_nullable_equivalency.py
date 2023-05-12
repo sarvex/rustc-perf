@@ -96,20 +96,23 @@ def checkEquivalent(iface, harness):
             try:
                 a2 = getattr(type2, attr)
             except:
-                harness.ok(False, 'Missing %s attribute on type %s in %s' % (attr, type2, iface))
+                harness.ok(False, f'Missing {attr} attribute on type {type2} in {iface}')
                 continue
 
             if not callable(a2):
-                harness.ok(False, "%s attribute on type %s in %s wasn't callable" % (attr, type2, iface))
+                harness.ok(
+                    False,
+                    f"{attr} attribute on type {type2} in {iface} wasn't callable",
+                )
                 continue
 
             v2 = a2()
-            harness.check(v2, v1, '%s method return value' % attr)
+            harness.check(v2, v1, f'{attr} method return value')
         else:
             try:
                 a2 = getattr(type2, attr)
             except:
-                harness.ok(False, 'Missing %s attribute on type %s in %s' % (attr, type2, iface))
+                harness.ok(False, f'Missing {attr} attribute on type {type2} in {iface}')
                 continue
 
-            harness.check(a2, a1, '%s attribute should match' % attr)
+            harness.check(a2, a1, f'{attr} attribute should match')

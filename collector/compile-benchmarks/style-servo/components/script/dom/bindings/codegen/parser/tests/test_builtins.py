@@ -35,7 +35,11 @@ def WebIDLTest(parser, harness):
     for i in range(10):
         attr = members[i]
         harness.ok(isinstance(attr, WebIDL.IDLAttribute), "Should be an IDLAttribute")
-        harness.check(attr.identifier.QName(), "::TestBuiltins::" + names[i], "Attr has correct QName")
+        harness.check(
+            attr.identifier.QName(),
+            f"::TestBuiltins::{names[i]}",
+            "Attr has correct QName",
+        )
         harness.check(attr.identifier.name, names[i], "Attr has correct name")
         harness.check(str(attr.type), types[i], "Attr type is the correct name")
         harness.ok(attr.type.isPrimitive(), "Should be a primitive type")
